@@ -1,4 +1,5 @@
-= Simple Python client for Seznam Sklik API =
+Simple Python client for Seznam Sklik API
+=========================================
 
 Mostly a thin wrapper around standard xmlrpclib. 
 
