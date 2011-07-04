@@ -1,0 +1,80 @@
+"""Seznam Sklik API"""
+
+from pprint import pformat
+
+from xmlrpclib import ServerProxy
+
+def needs_session(methodname):
+    """Return True when Sklik `methodname` needs session argument"""
+    return not any(methodname.startswith(s)
+                    for s in ('api.version', 'client.login', 'system.'))
+
+def debug(message):
+    print 'DEBUG', message
+
+class SklikError(Exception):
+    pass
+
+class SklikProxy(ServerProxy):
+    """Connection to Seznam Sklik XML-RPC sever (see http://api.sklik.cz)
+
+    Mostly compatible with xmlrpclib.ServerProxy. Differences:
+        * saves and passes `session` XML-RPC argument (when needed)
+        * users shouldn't pass `session` argument manually
+        * passes allow_none=True to ServerProxy
+        * nice debug logging (optional)
+    """
+
+    def __init__(self, *args, **kw):
+        """All unknown arguments are passed to xmlrpc.ServerProxy.__init__
+
+        Specific to SklikProxy:
+            debug - if True turn on nice debug logging [False]
+            exceptions - if True raise exceptions when status != 200 [False]
+        """
+
+        self.__session = None
+        for arg, default in [('debug', False), ('exceptions', False)]:
+            setattr(self, '_SklikProxy__' + arg, kw.pop(arg, default))
+
+        kw.setdefault('allow_none', True)
+
+        ServerProxy.__init__(self, *args, **kw)
+
+    def _ServerProxy__request(self, methodname, params):
+        if needs_session(methodname):
+            assert self.__session is not None
+            params = (self.__session,) + params
+
+        if self.__debug: # log request
+            p = params
+            if needs_session(methodname):
+                p = (params[0][:10] + '...' + params[0][-13:],) + params[1:]
+
+            debug('OUT %s%r' % (methodname, p))
+
+        res = ServerProxy._ServerProxy__request(self, methodname, params)
+
+        if self.__debug: # log response
+            if 'status' in res and res['status'] == 200:
+                payload = dict((k, res[k]) for k in res if k not in
+                                    ('status', 'statusMessage', 'session'))
+                debug('IN ' + pformat(payload or res['statusMessage']))
+            else:
+                debug('IN ' + pformat(res))
+
+        # save (possibly renewed) session
+        if 'session' in res:
+            if (self.__debug and self.__session and
+                                 self.__session != res['session']):
+                debug('session renewed')
+            self.__session = res['session']
+
+        if self.__exceptions and 'status' in res and res['status'] != 200:
+            if res['status'] in (400, 406):
+                raise SklikError(res['statusMessage'], res['errors'])
+            raise SklikError(res['status'], res['statusMessage'])
+
+        return res
+
+__all__ = ['SklikProxy', 'SklikError']
