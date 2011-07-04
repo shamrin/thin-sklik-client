@@ -1,8 +1,8 @@
 """Seznam Sklik API"""
 
 from pprint import pformat
-
 from xmlrpclib import ServerProxy
+from contextlib import contextmanager
 
 def needs_session(methodname):
     """Return True when Sklik `methodname` needs session argument"""
@@ -77,4 +77,21 @@ class SklikProxy(ServerProxy):
 
         return res
 
-__all__ = ['SklikProxy', 'SklikError']
+
+@contextmanager
+def Client(url, login, password, *args, **kw):
+    """Context manager that logs in on enter and logs out on exit
+
+    Usage:
+        >>> with Client(url, login, password, debug=True) as client:
+        ...     client.listReports()
+    """
+
+    proxy = SklikProxy(url, *args, **kw)
+    proxy.client.login(login, password)
+    try:
+        yield proxy
+    finally:
+        proxy.client.logout()
+
+__all__ = ['SklikProxy', 'SklikError', 'Client']
