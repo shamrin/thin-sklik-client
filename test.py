@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+"""Usage: ./test.py YOUR_SEZNAM_LOGIN YOUR_PASSWORD"""
 
 import sys
 from sklik import Client
