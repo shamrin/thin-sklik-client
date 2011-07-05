@@ -34,8 +34,8 @@ class SklikProxy(ServerProxy):
         """
 
         self.__session = None
-        for arg, default in [('debug', False), ('exceptions', False)]:
-            setattr(self, '_SklikProxy__' + arg, kw.pop(arg, default))
+        self.__debug = kw.pop('debug', False)
+        self.__exceptions = kw.pop('exceptions', False)
 
         kw.setdefault('allow_none', True)
 
