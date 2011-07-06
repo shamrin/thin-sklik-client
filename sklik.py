@@ -9,8 +9,8 @@ def needs_session(methodname):
     return not any(methodname.startswith(s)
                     for s in ('api.version', 'client.login', 'system.'))
 
-def debug(message):
-    print 'DEBUG', message
+def debug(*parts):
+    print 'DEBUG', ' '.join(parts)
 
 class SklikError(Exception):
     pass
@@ -59,15 +59,14 @@ class SklikProxy(ServerProxy):
             if 'status' in res and res['status'] == 200:
                 payload = dict((k, res[k]) for k in res if k not in
                                     ('status', 'statusMessage', 'session'))
-                debug('IN ' + pformat(payload or res['statusMessage']))
+                debug('IN', pformat(payload or res['statusMessage']))
             else:
-                debug('IN ' + pformat(res))
+                debug('IN', pformat(res))
 
-        # save (possibly renewed) session
-        if 'session' in res:
-            if (self.__debug and self.__session and
-                                 self.__session != res['session']):
-                debug('session renewed')
+        # save new session
+        if 'session' in res and res['session'] != self.__session:
+            if self.__debug:
+                debug('session', 'renewed' if self.__session else 'created')
             self.__session = res['session']
 
         if self.__exceptions and 'status' in res and res['status'] != 200:
