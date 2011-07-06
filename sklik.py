@@ -56,7 +56,7 @@ class SklikProxy(ServerProxy):
         res = ServerProxy._ServerProxy__request(self, methodname, params)
 
         if self.__debug: # log response
-            if 'status' in res and res['status'] == 200:
+            if res.get('status') == 200:
                 payload = dict((k, res[k]) for k in res if k not in
                                     ('status', 'statusMessage', 'session'))
                 debug('IN', pformat(payload or res['statusMessage']))
