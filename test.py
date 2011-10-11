@@ -8,7 +8,7 @@ url = 'https://api.sklik.cz/sandbox/bajaja/RPC2'
 login = '%s@seznam.cz' % sys.argv[1]
 password = sys.argv[2]
 
-with Client(url, login, password, debug=True) as c:
+with Client(url, login, password, loglevel=2) as c:
     c.api.version()
     c.client.getAttributes()
     c.listReports()

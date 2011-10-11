@@ -12,6 +12,10 @@ def needs_session(methodname):
 def debug(*parts):
     print 'DEBUG', ' '.join(parts)
 
+def dotted(s, limit=70, placeholder=' <...> '):
+    n = (limit - len(placeholder)) // 2
+    return s if len(s) <= limit else s[:n] + placeholder + s[-n:]
+
 class SklikError(Exception):
     pass
 
@@ -29,12 +33,12 @@ class SklikProxy(ServerProxy):
         """All unknown arguments are passed to xmlrpc.ServerProxy.__init__
 
         Specific to SklikProxy:
-            debug - if True turn on nice debug logging [False]
+            loglevel - debug log level, 0 - no logging, 2 - full logging [0]
             exceptions - if True raise exceptions when status != 200 [False]
         """
 
         self.__session = None
-        self.__debug = kw.pop('debug', False)
+        self.__debug = kw.pop('loglevel', 0)
         self.__exceptions = kw.pop('exceptions', False)
 
         kw.setdefault('allow_none', True)
@@ -47,21 +51,21 @@ class SklikProxy(ServerProxy):
             params = (self.__session,) + params
 
         if self.__debug: # log request
-            p = params
-            if needs_session(methodname):
-                p = (params[0][:10] + '...' + params[0][-13:],) + params[1:]
-
+            p = params if not needs_session(methodname)\
+                       else (dotted(params[0],30,'...'),) + params[1:]
             debug('OUT %s%r' % (methodname, p))
 
         res = ServerProxy._ServerProxy__request(self, methodname, params)
 
         if self.__debug: # log response
+            format = pformat if self.__debug >= 2 else lambda d: dotted(str(d))
+
             if res.get('status') == 200:
                 payload = dict((k, res[k]) for k in res if k not in
                                     ('status', 'statusMessage', 'session'))
-                debug('IN', pformat(payload or res['statusMessage']))
+                debug('IN', format(payload or res['statusMessage']))
             else:
-                debug('IN', pformat(res))
+                debug('IN', format(res))
 
         # save new session
         if 'session' in res and res['session'] != self.__session:
@@ -82,7 +86,7 @@ def Client(url, login, password, *args, **kw):
     """Context manager that logs in on enter and logs out on exit
 
     Usage:
-        >>> with Client(url, login, password, debug=True) as client:
+        >>> with Client(url, login, password, loglevel=1) as client:
         ...     client.listReports()
     """
 
